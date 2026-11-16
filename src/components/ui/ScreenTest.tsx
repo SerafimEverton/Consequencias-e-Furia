@@ -48,9 +48,9 @@ export function ScreenTest() {
   const [boardTop, setBoardTop] = useState(12.9);
   const [boardWidth, setBoardWidth] = useState(35.7);
   const [boardHeight, setBoardHeight] = useState(78.1);
-  const [gap, setGap] = useState(0);
-  const [cols, setCols] = useState(8);
-  const [rows, setRows] = useState(8);
+  const [gap] = useState(0);
+  const [cols] = useState(8);
+  const [rows] = useState(8);
 
   const grid = useMemo(() => {
     const cells: (typeof PREVIEW_PIECES)[number][] = [];

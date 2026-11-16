@@ -64,29 +64,29 @@ const LEVELS: LevelConfig[] = [
     rows: 8,
     cols: 8,
     targetPiece: 'battery',
-    targetCount: 45,
+    targetCount: 30,
     maxMoves: 25,
     boss: 'jaekelopterus',
     isRevenge: false,
     revengeMultiplier: 1,
     backgroundTheme: 'fossa',
   },
+  // {
+  //   id: 4,
+  //   name: 'Ninho da Fúria (Revanche)',
+  //   description: 'O escorpião retornou com seus filhotes. Meta dobrada.',
+  //   rows: 8,
+  //   cols: 8,
+  //   targetPiece: 'battery',
+  //   targetCount: 90,
+  //   maxMoves: 30,
+  //   boss: 'jaekelopterus',
+  //   isRevenge: true,
+  //   revengeMultiplier: 2,
+  //   backgroundTheme: 'fossa',
+  // },
   {
     id: 4,
-    name: 'Ninho da Fúria (Revanche)',
-    description: 'O escorpião retornou com seus filhotes. Meta dobrada.',
-    rows: 8,
-    cols: 8,
-    targetPiece: 'battery',
-    targetCount: 90,
-    maxMoves: 30,
-    boss: 'jaekelopterus',
-    isRevenge: true,
-    revengeMultiplier: 2,
-    backgroundTheme: 'fossa',
-  },
-  {
-    id: 5,
     name: 'Canal das Correntes',
     description: 'Após o escorpião, avance pelas correntes instáveis.',
     rows: 8,
@@ -608,6 +608,8 @@ const initialProgress: PlayerProgress = {
   scoreCrystalTier: 0,
 };
 
+let lastHullRepairAt = 0;
+
 export const useGameStore = create<GameState>((set, get) => ({
   screen: 'main_menu',
   progress: { ...initialProgress },
@@ -663,14 +665,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { progress } = get();
     let config = LEVELS.find((l) => l.id === levelId);
 
-    // Auto-revanche do Jaekelopterus
-    if (
-      levelId === 3 &&
-      (isRevenge || progress.jaekelopterusRevengePending)
-    ) {
-      config = LEVELS.find((l) => l.id === 4) ?? config;
-    }
-
     if (!config) {
       config = {
         id: levelId,
@@ -685,6 +679,23 @@ export const useGameStore = create<GameState>((set, get) => ({
         isRevenge: false,
         revengeMultiplier: 1,
         backgroundTheme: 'fossa',
+      };
+    }
+
+        // A revanche é uma variação da fase 3; o Canal das Correntes é a fase 4.
+    if (
+      config.id === 3 &&
+      config.boss === 'jaekelopterus' &&
+      (isRevenge || progress.jaekelopterusRevengePending)
+    ) {
+      config = {
+        ...config,
+        name: 'Ninho da Fúria (Revanche)',
+        description: 'O escorpião retornou com seus filhotes. Meta dobrada.',
+        targetCount: 60,
+        maxMoves: 30,
+        isRevenge: true,
+        revengeMultiplier: 2,
       };
     }
 
@@ -729,8 +740,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   selectPiece: (row, col) => {
     const { selectedPiece, isProcessing, isGameActive, board } = get();
-    if (isProcessing || !isGameActive) return;
     if (board[row]?.[col]?.type === 'blocked') return;
+    if (isProcessing || !isGameActive) return;
 
     if (!selectedPiece) {
       set({ selectedPiece: { row, col } });
@@ -748,9 +759,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({ selectedPiece: { row, col } });
       return;
     }
-
-    // Não trocar com bloqueado
-    if (board[row][col].type === 'blocked') return;
 
     get().swapPieces(selectedPiece.row, selectedPiece.col, row, col);
   },
@@ -1096,16 +1104,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       const dataGain = 50 + currentLevelConfig.id * 10;
       const crystalGain = currentLevelConfig.isRevenge ? 1 : 0;
 
-      // Revanche NÃO vem após vitória — só após derrota no 1º confronto
-      // Nível 4 é só config de revanche; após vencer o chefe (3 ou 4), avança para 5
-      let nextLevel: number;
-      if (currentLevelConfig.boss === 'jaekelopterus') {
-        nextLevel = 5; // pós-chefe
-      } else if (currentLevelConfig.id === 4) {
-        nextLevel = 5;
-      } else {
-        nextLevel = Math.max(progress.currentLevel, currentLevelConfig.id + 1);
-      }
+           const nextLevel =
+        currentLevelConfig.boss === 'jaekelopterus'
+          ? 4
+          : Math.max(progress.currentLevel, currentLevelConfig.id + 1);
 
       set({
         isGameActive: false,
@@ -1240,6 +1242,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (!progress.unlockedUpgrades.includes('hull_nanites')) return false;
       if (progress.biologicalData < 30) return false;
       if (hullIntegrity >= 100) return false;
+
+            const now = Date.now();
+      if (now - lastHullRepairAt < 750) return false;
+      lastHullRepairAt = now;
+
       set({
         hullIntegrity: Math.min(100, hullIntegrity + 20),
         progress: {
@@ -1250,12 +1257,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       return true;
     }
 
-    if (commandId === 'extra_moves') {
-      // Emergência: sempre exige mínimo de 40 dados
+          if (commandId === 'extra_moves') {
+      // Só permite emergência quando não há energia para uma jogada.
+      if (state.energy >= ENERGY_PER_MOVE) return false;
       if (progress.biologicalData < 40) return false;
+
       set({
         movesLeft: state.movesLeft + 3,
-        energy: Math.min(MAX_ENERGY, state.energy + 8),
+        energy: Math.min(MAX_ENERGY, state.energy + ENERGY_PER_MOVE * 3),
         progress: {
           ...progress,
           biologicalData: progress.biologicalData - 40,

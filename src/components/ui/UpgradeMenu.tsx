@@ -114,11 +114,11 @@ const GLOW_ON =
   '0 0 14px 6px rgba(251,191,36,0.75), 0 0 28px 10px rgba(245,158,11,0.45)';
 
 export function UpgradeMenu() {
-  const { progress, buyUpgrade, setScreen, isGameActive } = useGameStore();
+  const { progress, buyUpgrade, setScreen } = useGameStore();
   const [selectedId, setSelectedId] = useState<string>(MODULES[0].id);
   const [toast, setToast] = useState<string | null>(null);
   /** Botão lateral piscando ao acionar */
-  const [sideLit, setSideLit] = useState<string | null>(null);
+  const [, setSideLit] = useState<string | null>(null);
   /** Footer em contagem: aceso por 2s antes da ação */
   const [pendingAction, setPendingAction] = useState<'install' | 'back' | null>(
     null
@@ -137,14 +137,6 @@ export function UpgradeMenu() {
     !owned &&
     progress.biologicalData >= selected.costData &&
     progress.pureCrystals >= selected.costCrystals;
-
-  const clearPending = () => {
-    if (timerRef.current != null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    setPendingAction(null);
-  };
 
   const handleSideClick = (id: string) => {
     if (pendingAction) return; // evita troca no meio da contagem do rodapé

@@ -1,5 +1,5 @@
+import { ENERGY_PER_MOVE, useGameStore } from '../../store/gameStore';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useGameStore } from '../../store/gameStore';
 import { unlockAudio } from '../../systems/sounds';
 import { PIECE_COLORS, PIECE_LABELS } from '../../types/game';
 import type { PieceType } from '../../types/game';
@@ -325,6 +325,7 @@ export function Match3Board() {
     offspringMarks,
     clearOffspringMarks,
     endLevel,
+    isGameActive,
   } = useGameStore();
   const bossHud = getBossHud();
   const energyPct = Math.max(0, Math.min(100, energy));
@@ -367,26 +368,25 @@ export function Match3Board() {
     hullIntegrity < 100;
   const cmdMoves = progress.biologicalData >= 40;
   /** Emergência só com mínimo de Dados (40), em qualquer situação */
-  const cmdEmergReady = cmdMoves && !isProcessing;
+   const cmdEmergReady =
+    cmdMoves && energy < ENERGY_PER_MOVE && !isProcessing;
 
-  // Ao chegar em ≤4%: espera 1,5s, depois mostra o alerta e inicia contagem de 5s
+    // Inicia a contagem assim que não houver energia para uma jogada.
   useEffect(() => {
-    if (energy > 4) {
+    if (!isGameActive || energy >= ENERGY_PER_MOVE) {
       emergStartedRef.current = false;
       setEmergCountdown(null);
       return;
     }
-    if (energy <= 4 && !emergStartedRef.current) {
+
+    if (!emergStartedRef.current) {
       emergStartedRef.current = true;
-      const delay = setTimeout(() => {
-        setEmergCountdown(5);
-      }, 1500);
-      return () => clearTimeout(delay);
+      setEmergCountdown(5);
     }
-  }, [energy]);
+  }, [energy, isGameActive]);
 
   useEffect(() => {
-    if (emergCountdown === null) return;
+    if (emergCountdown === null || !isGameActive) return;
     if (emergCountdown <= 0) {
       setEmergCountdown(null);
       endLevel(false);
@@ -396,8 +396,7 @@ export function Match3Board() {
       setEmergCountdown((c) => (c === null ? null : c - 1));
     }, 1000);
     return () => clearTimeout(tmr);
-  }, [emergCountdown, endLevel]);
-
+    }, [emergCountdown, endLevel, isGameActive]);
 
   const [bursts, setBursts] = useState<ParticleBurst[]>([]);
   const boardWrapRef = useRef<HTMLDivElement>(null);
@@ -523,7 +522,7 @@ export function Match3Board() {
 
   useEffect(() => {
     if (!offspringMarks.length) return;
-    const t = setTimeout(() => clearOffspringMarks(), 2000);
+    const t = setTimeout(() => clearOffspringMarks(), 1300);
     return () => clearTimeout(t);
   }, [offspringMarks, clearOffspringMarks]);
 
@@ -535,7 +534,7 @@ export function Match3Board() {
     );
   }
 
-  const { targetPiece, targetCount, name, isRevenge } = currentLevelConfig;
+  const { targetPiece, targetCount} = currentLevelConfig;
 
   const BOARD = { left: 31.7, top: 12.9, width: 35.7, height: 78.1, gap: 0 };
 
@@ -859,7 +858,9 @@ export function Match3Board() {
                       ⚠ Energia crítica — {Math.round(energyPct)}%
                     </div>
                     <div className="mt-1 text-sm font-bold text-amber-200">
-                      Acione o botão EMERGÊNCIA
+                      {cmdMoves
+                        ? 'Acione o botão EMERGÊNCIA'
+                        : 'Dados insuficientes — missão falhará'}
                     </div>
                     <div className="mt-2 font-mono text-2xl font-black text-red-300">
                       {emergCountdown}s
@@ -1097,7 +1098,7 @@ export function Match3Board() {
                 emergStartedRef.current = false;
               }
             },
-            title: 'Emergência · +3 movimentos · 40 dados',
+            title: 'Emergência · +3 movimentos e energia para até 3 jogadas · 40 dados',
             label: 'Emergência',
             left: '87.60%',
             top: '79.0%',
@@ -1382,7 +1383,7 @@ export function Match3Board() {
           100% { transform: scale(0.6) translateY(-6px); opacity: 0; }
         }
         .offspring-overlay {
-          animation: offspringIn 2s ease-out forwards;
+          animation: offspringIn 1.3s ease-out forwards;
         }
         .offspring-chip {
           border-radius: 50%;
