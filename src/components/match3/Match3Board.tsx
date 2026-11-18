@@ -522,8 +522,8 @@ export function Match3Board() {
 
   useEffect(() => {
     if (!offspringMarks.length) return;
-    const t = setTimeout(() => clearOffspringMarks(), 1300);
-    return () => clearTimeout(t);
+  const t = window.setTimeout(() => clearOffspringMarks(), 1300);
+  return () => window.clearTimeout(t);    
   }, [offspringMarks, clearOffspringMarks]);
 
   if (!currentLevelConfig || board.length === 0) {
@@ -819,8 +819,7 @@ export function Match3Board() {
               )}
 
               {/* Filhotes no monitor superior durante o ataque secundário */}
-              {bossHud &&
-                (lastBossAttack === 'secondary' || offspringMarks.length > 0) && (
+              {bossHud && offspringMarks.length > 0 && (
                   <div
                     className="pointer-events-none absolute z-[5] flex flex-col items-center justify-center bg-black/70"
                     style={{

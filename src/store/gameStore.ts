@@ -37,7 +37,7 @@ const LEVELS: LevelConfig[] = [
     cols: 8,
     targetPiece: 'oxygen',
     targetCount: 30,
-    maxMoves: 30,
+    maxMoves: 25,
     boss: null,
     isRevenge: false,
     revengeMultiplier: 1,
@@ -699,15 +699,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }
 
-    if (isRevenge && !config.isRevenge && config.boss === 'jaekelopterus') {
-      config = LEVELS.find((l) => l.id === 4) ?? {
-        ...config,
-        isRevenge: true,
-        targetCount: config.targetCount * 2,
-        name: `${config.name} (Revanche)`,
-      };
-    }
-
     const board = generateBoard(config.rows, config.cols);
 
     set({
@@ -1096,7 +1087,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }, 1100);
   },
 
-  endLevel: (won) => {
+   endLevel: (won) => {
     const { progress, currentLevelConfig, oceanHealth, hullIntegrity } = get();
     if (!currentLevelConfig) return;
 
@@ -1104,7 +1095,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       const dataGain = 50 + currentLevelConfig.id * 10;
       const crystalGain = currentLevelConfig.isRevenge ? 1 : 0;
 
-           const nextLevel =
+      const nextLevel =
         currentLevelConfig.boss === 'jaekelopterus'
           ? 4
           : Math.max(progress.currentLevel, currentLevelConfig.id + 1);
@@ -1130,13 +1121,13 @@ export const useGameStore = create<GameState>((set, get) => ({
         lastBossAttack: null,
       });
     } else {
-      // Derrota no 1º confronto do escorpião → marca revanche
       const isBossLoss =
         currentLevelConfig.boss === 'jaekelopterus' &&
         !currentLevelConfig.isRevenge;
       const isRevengeLoss =
         currentLevelConfig.boss === 'jaekelopterus' &&
         currentLevelConfig.isRevenge;
+      const isRevengeHullLoss = isRevengeLoss;
       const prevLevel = Math.max(1, currentLevelConfig.id - 1);
 
       set({
@@ -1145,13 +1136,26 @@ export const useGameStore = create<GameState>((set, get) => ({
         cabinMood: 'critical',
         progress: {
           ...progress,
-          // Mantém nível 3 para retentar; revanche só se perdeu o normal
-          currentLevel: isBossLoss || isRevengeLoss ? 3 : prevLevel,
+          currentLevel: isRevengeHullLoss
+            ? 1
+            : isBossLoss || isRevengeLoss
+              ? 3
+              : prevLevel,
           totalLosses: progress.totalLosses + 1,
-          jaekelopterusRevengePending:
-            isBossLoss || isRevengeLoss
+          jaekelopterusRevengePending: isRevengeHullLoss
+            ? false
+            : isBossLoss || isRevengeLoss
               ? true
               : progress.jaekelopterusRevengePending,
+          // Derrota contra o primeiro chefe: campanha recomeça do zero
+          ...(isRevengeHullLoss
+            ? {
+                biologicalData: 0,
+                pureCrystals: 0,
+                unlockedUpgrades: [],
+                highestLevel: 1,
+              }
+            : {}),
         },
         screen: 'cabin',
         lastTreasureEvent: null,
