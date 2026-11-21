@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useGameStore } from '../../store/gameStore';
 import { unlockAudio } from '../../systems/sounds';
 
@@ -20,16 +21,34 @@ const BUBBLES = [
 ];
 
 export function MainMenu() {
-  const { setScreen, startLevel, resetGame } = useGameStore();
+  const { setScreen, startNewCampaign, progress } = useGameStore();
+  const [showStartChoice, setShowStartChoice] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMenuVisible(true), 3000);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const beginCampaign = (levelId: number) => {
+    unlockAudio();
+    startNewCampaign(levelId);
+    setShowStartChoice(false);
+  };
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden">
-      {/* Água profunda */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0284c7] via-[#0369a1] to-[#0c4a6e]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-transparent to-[#020617]/90" />
+      {/* Imagem de fundo do menu */}
+      <img
+        src="/ui/main-menu-background.jpg"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover object-center"
+      />
+      <div className="absolute inset-0 bg-linear-to-b from-white/25 via-transparent to-[#020617]/90" />
 
       {/* Superfície luminosa */}
-      <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-sky-100/50 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-28 bg-linear-to-b from-sky-100/50 to-transparent pointer-events-none" />
 
       {/* Raios de luz centrais */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -101,13 +120,22 @@ export function MainMenu() {
       ))}
 
       {/* Fundo suave (sem corais, sem plantas) */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#020617]/80 to-transparent pointer-events-none" />
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-linear-to-t from-[#020617]/80 to-transparent pointer-events-none" />
 
       {/* Vinheta */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(2,6,23,0.45)_100%)]" />
 
       {/* === MENU === */}
-      <div className="relative z-10 flex flex-col items-center gap-8 px-6 text-center max-w-lg">
+      <div
+        aria-hidden={!menuVisible}
+        className="relative z-10 flex flex-col items-center gap-8 px-6 text-center max-w-lg transition-all duration-700 ease-out"
+        style={{
+          opacity: menuVisible ? 1 : 0,
+          transform: menuVisible ? 'translateY(0)' : 'translateY(12px)',
+          pointerEvents: menuVisible ? 'auto' : 'none',
+          visibility: menuVisible ? 'visible' : 'hidden',
+        }}
+      >
         <div className="space-y-2">
           <p className="text-cyan-50 text-sm tracking-[0.3em] uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
             ECO-DEEP Apresenta
@@ -115,7 +143,7 @@ export function MainMenu() {
           <h1 className="text-5xl sm:text-6xl font-black tracking-tight text-white drop-shadow-[0_2px_25px_rgba(0,0,0,0.8)]">
             Consequência
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-white to-sky-100">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-cyan-200 via-white to-sky-100">
               e Fúria
             </span>
           </h1>
@@ -127,10 +155,14 @@ export function MainMenu() {
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button
             type="button"
+            disabled={!menuVisible}
             onClick={() => {
               unlockAudio();
-              resetGame();
-              startLevel(1);
+              if (progress.highestLevel >= 3) {
+                setShowStartChoice(true);
+              } else {
+                beginCampaign(1);
+              }
             }}
             className="w-full py-3.5 px-6 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-900 font-bold text-lg shadow-xl shadow-cyan-950/50 transition-all hover:scale-[1.02] active:scale-[0.98] border border-white/30"
           >
@@ -139,6 +171,7 @@ export function MainMenu() {
 
           <button
             type="button"
+            disabled={!menuVisible}
             onClick={() => setScreen('cabin')}
             className="w-full py-3 px-6 rounded-xl bg-slate-950/60 hover:bg-slate-900/80 text-white font-semibold border border-white/20 backdrop-blur-md transition-all"
           >
@@ -146,6 +179,47 @@ export function MainMenu() {
           </button>
         </div>
       </div>
+
+      {showStartChoice && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/80 px-5 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="campaign-choice-title"
+            className="w-full max-w-md rounded-2xl border border-cyan-200/30 bg-slate-950/95 p-6 text-center shadow-2xl shadow-cyan-950/60"
+          >
+            <h2 id="campaign-choice-title" className="text-2xl font-black text-white">
+              Nova Jornada
+            </h2>
+            <p className="mt-2 text-sm text-cyan-50/75">
+              Escolha onde recomeçar. A nova campanha inicia sem Dados, Cristais ou melhorias.
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => beginCampaign(1)}
+                className="w-full rounded-xl border border-white/20 bg-slate-800 px-5 py-3 font-bold text-white transition hover:bg-slate-700"
+              >
+                Começar no Nível 1
+              </button>
+              <button
+                type="button"
+                onClick={() => beginCampaign(progress.highestLevel)}
+                className="w-full rounded-xl border border-cyan-200/50 bg-cyan-400 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-300"
+              >
+                Ir direto ao chefe liberado — Nível {progress.highestLevel}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowStartChoice(false)}
+                className="mt-1 px-5 py-2 text-sm font-semibold text-white/70 hover:text-white"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes bubbleUp {

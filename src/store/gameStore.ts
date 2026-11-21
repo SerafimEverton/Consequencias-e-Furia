@@ -634,6 +634,25 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setScreen: (screen) => set({ screen }),
 
+  startNewCampaign: (levelId) => {
+    set({
+      progress: {
+        ...initialProgress,
+        currentLevel: levelId,
+        highestLevel: levelId,
+      },
+      score: 0,
+      movesLeft: 0,
+      targetCollected: 0,
+      oceanHealth: 30,
+      cabinMood: 'tense',
+      hullIntegrity: MAX_HULL,
+      energy: MAX_ENERGY,
+      lastTreasureEvent: null,
+    });
+    get().startLevel(levelId);
+  },
+
   clearTreasureEvent: () => set({ lastTreasureEvent: null }),
 
   clearOffspringMarks: () => set({ offspringMarks: [] }),

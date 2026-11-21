@@ -136,6 +136,7 @@ export interface GameState {
   energy: number;
 
   setScreen: (screen: GameScreen) => void;
+  startNewCampaign: (levelId: number) => void;
   startLevel: (levelId: number, isRevenge?: boolean) => void;
   selectPiece: (row: number, col: number) => void;
   swapPieces: (r1: number, c1: number, r2: number, c2: number) => void;
